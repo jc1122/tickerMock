@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="guiMock:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/guiMock_jar</output-path>
+    <root id="archive" name="guiMock.jar">
+      <element id="module-output" name="guiMock" />
+    </root>
+  </artifact>
+</component>
