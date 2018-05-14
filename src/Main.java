@@ -1,11 +1,21 @@
 import javax.swing.*;
 import javax.swing.border.Border;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableRowSorter;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+
+import java.util.List;
 
 public class Main {
+    static JTextField filterText;
+    static TableRowSorter<TickerTableModel> sorterLeft;
+    static TableRowSorter<TickerTableModel> sorterRight;
 
     public static void setBorder(JComponent component) {
         component.setBorder(
@@ -16,14 +26,12 @@ public class Main {
     public static class TickerTable {
         JScrollPane scrollPane;
         JTable table;
-        private JScrollPane createTable(Object[][] data) {
-            String[] columnNames = {"test1", "test2", "test3"};
-            int numRows = 0 ;
-            DefaultTableModel model = new DefaultTableModel(numRows, columnNames.length) ;
-            model.setColumnIdentifiers(columnNames);
-            if(data != null) {
-                model.setDataVector(data, columnNames);
-            }
+
+        private JScrollPane createTable(List<MockTicker> tickers) {
+
+
+            TickerTableModel model = new TickerTableModel(tickers) ;
+
             table = new JTable(model);
 
             JScrollPane scrollPane2 = new JScrollPane(table);
@@ -32,8 +40,8 @@ public class Main {
             return scrollPane2;
         }
 
-        public TickerTable(Object[][] data){
-            scrollPane = createTable(data);
+        public TickerTable(List<MockTicker> tickers){
+            scrollPane = createTable(tickers);
             Border innerBorder = BorderFactory.createCompoundBorder(
                     BorderFactory.createTitledBorder("Tickers to choose from:"),
                     BorderFactory.createEmptyBorder(5,5,5,5)
@@ -49,6 +57,7 @@ public class Main {
             return scrollPane;
         }
         public JTable getTable() { return table;}
+        public TickerTableModel getModel() {return (TickerTableModel) table.getModel();}
     }
 
     public static class ButtonPane {
@@ -64,6 +73,108 @@ public class Main {
         }
     }
 
+    public static class MockTicker {
+        private String isin;
+        private String name;
+        private String marketCode;
+        private String cfi;
+        private String group;
+
+        MockTicker(String i) {
+            isin = "isin " + i;
+            name = "name " + i;
+            marketCode = "marketCode " + i;
+            cfi = "cfi " + i;
+            group = "group " + i;
+        }
+
+        public String getIsin() {
+            return isin;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getMarketCode() {
+            return marketCode;
+        }
+
+        public String getCfi() {
+            return cfi;
+        }
+
+        public String getGroup() {
+            return group;
+        }
+    }
+    public static class TickerTableModel extends AbstractTableModel {
+
+        List<MockTicker> tickers;
+        public void setData(List<MockTicker> tickers) {
+            this.tickers = tickers;
+        }
+        TickerTableModel(List<MockTicker> tickers) {
+            this.tickers = tickers;
+        }
+
+        @Override
+        public String getColumnName(int column){
+            switch(column) {
+                case 0:
+                    return "Name";
+                case 1:
+                    return "ISIN";
+                case 2:
+                    return "CFI";
+                case 3:
+                    return "Group";
+                case 4:
+                    return "Market Code";
+            }
+            return null;
+        }
+
+        @Override
+        public int getRowCount() {
+            return tickers.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return 5;
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            switch (columnIndex) {
+                case 0:
+                    return tickers.get(rowIndex).getName();
+                case 1:
+                    return tickers.get(rowIndex).getIsin();
+                case 2:
+                    return tickers.get(rowIndex).getCfi();
+                case 3:
+                    return tickers.get(rowIndex).getGroup();
+                case 4:
+                    return tickers.get(rowIndex).getMarketCode();
+            }
+            return null;
+        }
+
+        public void addRow(MockTicker ticker) {
+            tickers.add(ticker);
+            this.fireTableDataChanged();
+        }
+        public MockTicker removeRow(int row) {
+            MockTicker ticker = tickers.remove(row);
+            this.fireTableDataChanged();
+            return ticker;
+        }
+        public MockTicker getRow(int row) {
+            return tickers.get(row);
+        }
+    }
 
     public static class MoveButtonPane {
         JPanel buttonPanel = new JPanel();
@@ -87,27 +198,22 @@ public class Main {
             rightButton.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent actionEvent) {
-                    Object[] newRow = new Object[left.getColumnCount()];
-                    for (int i = 0; i < left.getColumnCount(); i++) {
-                        newRow[i] = left.getValueAt(left.getSelectedRow(), i);
-                    }
-                    DefaultTableModel rightModel = (DefaultTableModel) right.getModel();
-                    rightModel.addRow(newRow);
-                    DefaultTableModel leftModel = (DefaultTableModel) left.getModel();
-                    leftModel.removeRow(left.getSelectedRow());
+
+                    TickerTableModel rightModel = (TickerTableModel) right.getModel();
+                    TickerTableModel leftModel = (TickerTableModel) left.getModel();
+                    int row = left.convertRowIndexToModel(left.getSelectedRow());
+                    rightModel.addRow(leftModel.removeRow(row));
+
                 }
             });
             leftButton.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent actionEvent) {
-                    Object[] newRow = new Object[right.getColumnCount()];
-                    for (int i = 0; i < right.getColumnCount(); i++) {
-                        newRow[i] = right.getValueAt(right.getSelectedRow(), i);
-                    }
-                    DefaultTableModel leftModel = (DefaultTableModel) left.getModel();
-                    DefaultTableModel rightModel = (DefaultTableModel) right.getModel();
-                    leftModel.addRow(newRow);
-                    rightModel.removeRow(right.getSelectedRow());
+                    TickerTableModel rightModel = (TickerTableModel) right.getModel();
+                    TickerTableModel leftModel = (TickerTableModel) left.getModel();
+                    int row = right.convertRowIndexToModel(right.getSelectedRow());
+                    leftModel.addRow(rightModel.removeRow(row));
+
                 }
             });
         }
@@ -120,25 +226,47 @@ public class Main {
         JDialog dialog = new JDialog();
         dialog.setTitle("Tickers to watch");
 
-        Object[][] data = {
-                {"ticker", "name", "value"},
-                {"ticker1", "name1", "value"},
-                {"ticker2", "name2", "value"},
-                {"ticker3", "name3", "value"},
-                {"ticker4", "name4", "value"}
-        };
+        List<MockTicker> tickers = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            tickers.add(new MockTicker(Integer.toString(i)));
+        }
+
+        List<MockTicker> tickersToFilter = new ArrayList<>();
 
         JPanel pane = new JPanel();
         pane.setLayout(new BoxLayout(pane, BoxLayout.LINE_AXIS));
 
-        TickerTable left = new TickerTable(data);
-        TickerTable right = new TickerTable(null);
+        TickerTable left = new TickerTable(tickers);
+        TickerTable right = new TickerTable(tickersToFilter);
         JTable leftTable = left.getTable();
         JTable rightTable = right.getTable();
+        leftTable.setAutoCreateRowSorter(true);
+        rightTable.setAutoCreateRowSorter(true);
+        filterText = new JTextField();
 
         pane.add(left.getPane());
         pane.add(new MoveButtonPane(leftTable, rightTable).getPanel());
         pane.add(right.getPane());
+        pane.add(filterText);
+
+        sorterLeft = new TableRowSorter<>(left.getModel());
+        sorterRight = new TableRowSorter<>(right.getModel());
+        leftTable.setRowSorter(sorterLeft);
+        rightTable.setRowSorter(sorterRight);
+
+        filterText.getDocument().addDocumentListener(
+                new DocumentListener() {
+                    public void changedUpdate(DocumentEvent e) {
+                        newFilter();
+                    }
+                    @Override
+                    public void insertUpdate(DocumentEvent e) {
+                        newFilter();
+                    }
+                    public void removeUpdate(DocumentEvent e) {
+                        newFilter();
+                    }
+                });
         //setBorder(pane);
         dialog.setLayout(new BorderLayout());
         dialog.add(pane, BorderLayout.CENTER);
@@ -150,4 +278,16 @@ public class Main {
 
         dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
     }
+    static private void newFilter() {
+        RowFilter<TickerTableModel, Object> rf = null;
+        //If current expression doesn't parse, don't update.
+        try {
+            rf = RowFilter.regexFilter(filterText.getText());
+        } catch (java.util.regex.PatternSyntaxException e) {
+            return;
+        }
+        sorterLeft.setRowFilter(rf);
+        sorterRight.setRowFilter(rf);
+    }
+    //TODO now refactor
 }
