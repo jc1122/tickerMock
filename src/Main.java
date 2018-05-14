@@ -2,6 +2,8 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 public class Main {
 
@@ -13,6 +15,7 @@ public class Main {
 
     public static class TickerTable {
         JScrollPane scrollPane;
+        JTable table;
         private JScrollPane createTable(Object[][] data) {
             String[] columnNames = {"test1", "test2", "test3"};
             int numRows = 0 ;
@@ -21,10 +24,10 @@ public class Main {
             if(data != null) {
                 model.setDataVector(data, columnNames);
             }
-            JTable table2 = new JTable(model);
+            table = new JTable(model);
 
-            JScrollPane scrollPane2 = new JScrollPane(table2);
-            table2.setFillsViewportHeight(true);
+            JScrollPane scrollPane2 = new JScrollPane(table);
+            table.setFillsViewportHeight(true);
 
             return scrollPane2;
         }
@@ -42,9 +45,10 @@ public class Main {
             //setBorder(scrollPane);
         }
 
-        public JScrollPane getTable() {
+        public JScrollPane getPane() {
             return scrollPane;
         }
+        public JTable getTable() { return table;}
     }
 
     public static class ButtonPane {
@@ -60,9 +64,16 @@ public class Main {
         }
     }
 
+
     public static class MoveButtonPane {
         JPanel buttonPanel = new JPanel();
-        MoveButtonPane() {
+        JTable left;
+        JTable right;
+
+        MoveButtonPane(JTable leftTable, JTable rightTable) {
+            this.left = leftTable;
+            this.right = rightTable;
+
             JButton rightButton = new JButton(">");
             JButton leftButton = new JButton("<");
             rightButton.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -73,6 +84,32 @@ public class Main {
                     (int)leftButton.getPreferredSize().getHeight())));
             buttonPanel.add(leftButton);
             //setBorder(buttonPanel);
+            rightButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent actionEvent) {
+                    Object[] newRow = new Object[left.getColumnCount()];
+                    for (int i = 0; i < left.getColumnCount(); i++) {
+                        newRow[i] = left.getValueAt(left.getSelectedRow(), i);
+                    }
+                    DefaultTableModel rightModel = (DefaultTableModel) right.getModel();
+                    rightModel.addRow(newRow);
+                    DefaultTableModel leftModel = (DefaultTableModel) left.getModel();
+                    leftModel.removeRow(left.getSelectedRow());
+                }
+            });
+            leftButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent actionEvent) {
+                    Object[] newRow = new Object[right.getColumnCount()];
+                    for (int i = 0; i < right.getColumnCount(); i++) {
+                        newRow[i] = right.getValueAt(right.getSelectedRow(), i);
+                    }
+                    DefaultTableModel leftModel = (DefaultTableModel) left.getModel();
+                    DefaultTableModel rightModel = (DefaultTableModel) right.getModel();
+                    leftModel.addRow(newRow);
+                    rightModel.removeRow(right.getSelectedRow());
+                }
+            });
         }
 
         public JPanel getPanel() {
@@ -81,7 +118,7 @@ public class Main {
     }
     public static void main(String[] args) {
         JDialog dialog = new JDialog();
-
+        dialog.setTitle("Tickers to watch");
 
         Object[][] data = {
                 {"ticker", "name", "value"},
@@ -94,9 +131,14 @@ public class Main {
         JPanel pane = new JPanel();
         pane.setLayout(new BoxLayout(pane, BoxLayout.LINE_AXIS));
 
-        pane.add(new TickerTable(data).getTable());
-        pane.add(new MoveButtonPane().getPanel());
-        pane.add(new TickerTable(null).getTable());
+        TickerTable left = new TickerTable(data);
+        TickerTable right = new TickerTable(null);
+        JTable leftTable = left.getTable();
+        JTable rightTable = right.getTable();
+
+        pane.add(left.getPane());
+        pane.add(new MoveButtonPane(leftTable, rightTable).getPanel());
+        pane.add(right.getPane());
         //setBorder(pane);
         dialog.setLayout(new BorderLayout());
         dialog.add(pane, BorderLayout.CENTER);
