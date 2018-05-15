@@ -61,15 +61,28 @@ public class Main {
     }
 
     public static class ButtonPane {
+        JPanel totalPane = new JPanel();
+        JPanel filterPane = new JPanel();
+        BoxLayout totalPaneLayout = new BoxLayout(totalPane,BoxLayout.Y_AXIS);
+
         JPanel buttonPane = new JPanel();
         public ButtonPane() {
             buttonPane.add(new JButton("OK"));
             buttonPane.add(new JButton("Cancel"));
             buttonPane.add(new JButton("Save..."));
             buttonPane.add(new JButton("Load..."));
+
+            filterPane.add(new JLabel("Search text: "));
+            JTextField searchField = new JTextField();
+            searchField.setColumns(30);
+            filterPane.add(searchField);
+
+            totalPane.setLayout(totalPaneLayout);
+            totalPane.add(filterPane);
+            totalPane.add(buttonPane);
         }
         public JPanel getPane() {
-            return buttonPane;
+            return totalPane;
         }
     }
 
@@ -222,62 +235,89 @@ public class Main {
             return buttonPanel;
         }
     }
-    public static void main(String[] args) {
-        JDialog dialog = new JDialog();
-        dialog.setTitle("Tickers to watch");
 
-        List<MockTicker> tickers = new ArrayList<>();
-        for (int i = 0; i < 30; i++) {
-            tickers.add(new MockTicker(Integer.toString(i)));
+    public static class TickerTablesPane {
+        private JPanel pane;
+        TickerTable left, right;
+        TableRowSorter<TickerTableModel> sorter;
+
+        private setTableSorter(JTable table) {
+            table.setAutoCreateRowSorter(true);
+            table.setRowSorter(sorter);
+
+        }
+        TickerTablesPane(JTextField filterText, List<MockTicker> tickers) {
+            List<MockTicker> tickersToFilter = new ArrayList<>();
+
+            pane = new JPanel();
+            pane.setLayout(new BoxLayout(pane, BoxLayout.LINE_AXIS));
+
+            left = new TickerTable(tickers);
+            JTable leftTable = left.getTable();
+            leftTable.setAutoCreateRowSorter(true);
+            sorterLeft = new TableRowSorter<>(left.getModel());
+            leftTable.setRowSorter(sorterLeft);
+
+            right = new TickerTable(tickersToFilter);
+            JTable rightTable = right.getTable();
+            rightTable.setAutoCreateRowSorter(true);
+            sorterRight = new TableRowSorter<>(right.getModel());
+            rightTable.setRowSorter(sorterRight);
+
+
+            pane.add(left.getPane());
+            pane.add(new MoveButtonPane(leftTable, rightTable).getPanel());
+            pane.add(right.getPane());
+            pane.add(filterText);
+
+
+            filterText.getDocument().addDocumentListener(
+                    new DocumentListener() {
+                        public void changedUpdate(DocumentEvent e) {
+                            newFilter();
+                        }
+                        @Override
+                        public void insertUpdate(DocumentEvent e) {
+                            newFilter();
+                        }
+                        public void removeUpdate(DocumentEvent e) {
+                            newFilter();
+                        }
+                    });
         }
 
-        List<MockTicker> tickersToFilter = new ArrayList<>();
-
-        JPanel pane = new JPanel();
-        pane.setLayout(new BoxLayout(pane, BoxLayout.LINE_AXIS));
-
-        TickerTable left = new TickerTable(tickers);
-        TickerTable right = new TickerTable(tickersToFilter);
-        JTable leftTable = left.getTable();
-        JTable rightTable = right.getTable();
-        leftTable.setAutoCreateRowSorter(true);
-        rightTable.setAutoCreateRowSorter(true);
-        filterText = new JTextField();
-
-        pane.add(left.getPane());
-        pane.add(new MoveButtonPane(leftTable, rightTable).getPanel());
-        pane.add(right.getPane());
-        pane.add(filterText);
-
-        sorterLeft = new TableRowSorter<>(left.getModel());
-        sorterRight = new TableRowSorter<>(right.getModel());
-        leftTable.setRowSorter(sorterLeft);
-        rightTable.setRowSorter(sorterRight);
-
-        filterText.getDocument().addDocumentListener(
-                new DocumentListener() {
-                    public void changedUpdate(DocumentEvent e) {
-                        newFilter();
-                    }
-                    @Override
-                    public void insertUpdate(DocumentEvent e) {
-                        newFilter();
-                    }
-                    public void removeUpdate(DocumentEvent e) {
-                        newFilter();
-                    }
-                });
-        //setBorder(pane);
-        dialog.setLayout(new BorderLayout());
-        dialog.add(pane, BorderLayout.CENTER);
-
-        dialog.add(new ButtonPane().getPane(),BorderLayout.PAGE_END);
-        dialog.pack();
-        SwingUtilities.invokeLater(() ->
-                dialog.setVisible(true));
-
-        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        public JPanel getPane() {
+            return pane;
+        }
     }
+
+    public static class TickerSelectorDialog {
+        TickerSelectorDialog() {
+            JDialog dialog = new JDialog();
+            dialog.setTitle("Tickers to watch");
+
+            List<MockTicker> tickers = new ArrayList<>();
+            for (int i = 0; i < 30; i++) {
+                tickers.add(new MockTicker(Integer.toString(i)));
+            }
+
+            TickerTablesPane tickerTablesPane = new TickerTablesPane(filterText, tickers);
+            //setBorder(pane);
+            dialog.setLayout(new BorderLayout());
+            dialog.add(tickerTablesPane.getPane(), BorderLayout.CENTER);
+
+            dialog.add(new ButtonPane().getPane(),BorderLayout.PAGE_END);
+            dialog.pack();
+            SwingUtilities.invokeLater(() ->
+                    dialog.setVisible(true));
+
+            dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        }
+    }
+    public static void main(String[] args) {
+        new TickerSelectorDialog();
+    }
+
     static private void newFilter() {
         RowFilter<TickerTableModel, Object> rf = null;
         //If current expression doesn't parse, don't update.
