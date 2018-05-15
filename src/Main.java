@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
-    static JTextField filterText;
+    //static JTextField filterText;
     static TableRowSorter<TickerTableModel> sorterLeft;
     static TableRowSorter<TickerTableModel> sorterRight;
 
@@ -64,6 +64,7 @@ public class Main {
         JPanel totalPane = new JPanel();
         JPanel filterPane = new JPanel();
         BoxLayout totalPaneLayout = new BoxLayout(totalPane,BoxLayout.Y_AXIS);
+        JTextField searchField;
 
         JPanel buttonPane = new JPanel();
         public ButtonPane() {
@@ -73,7 +74,7 @@ public class Main {
             buttonPane.add(new JButton("Load..."));
 
             filterPane.add(new JLabel("Search text: "));
-            JTextField searchField = new JTextField();
+            searchField = new JTextField();
             searchField.setColumns(30);
             filterPane.add(searchField);
 
@@ -83,6 +84,9 @@ public class Main {
         }
         public JPanel getPane() {
             return totalPane;
+        }
+        public JTextField getSearchField() {
+            return searchField;
         }
     }
 
@@ -239,12 +243,11 @@ public class Main {
     public static class TickerTablesPane {
         private JPanel pane;
         TickerTable left, right;
-        TableRowSorter<TickerTableModel> sorter;
 
-        private setTableSorter(JTable table) {
+        private void setTableSorter(JTable table) {
             table.setAutoCreateRowSorter(true);
+            TableRowSorter<TickerTableModel> sorter = new TableRowSorter<>((TickerTableModel)table.getModel());
             table.setRowSorter(sorter);
-
         }
         TickerTablesPane(JTextField filterText, List<MockTicker> tickers) {
             List<MockTicker> tickersToFilter = new ArrayList<>();
@@ -252,36 +255,32 @@ public class Main {
             pane = new JPanel();
             pane.setLayout(new BoxLayout(pane, BoxLayout.LINE_AXIS));
 
+
             left = new TickerTable(tickers);
-            JTable leftTable = left.getTable();
-            leftTable.setAutoCreateRowSorter(true);
-            sorterLeft = new TableRowSorter<>(left.getModel());
-            leftTable.setRowSorter(sorterLeft);
+            setTableSorter(left.getTable());
 
             right = new TickerTable(tickersToFilter);
             JTable rightTable = right.getTable();
             rightTable.setAutoCreateRowSorter(true);
             sorterRight = new TableRowSorter<>(right.getModel());
             rightTable.setRowSorter(sorterRight);
-
+            //TODO replace global sorterLeft in newFilter with local sorter from left and right
 
             pane.add(left.getPane());
-            pane.add(new MoveButtonPane(leftTable, rightTable).getPanel());
+            pane.add(new MoveButtonPane(left.getTable(), rightTable).getPanel());
             pane.add(right.getPane());
-            pane.add(filterText);
-
 
             filterText.getDocument().addDocumentListener(
                     new DocumentListener() {
                         public void changedUpdate(DocumentEvent e) {
-                            newFilter();
+                            newFilter(filterText.getText());
                         }
                         @Override
                         public void insertUpdate(DocumentEvent e) {
-                            newFilter();
+                            newFilter(filterText.getText());
                         }
                         public void removeUpdate(DocumentEvent e) {
-                            newFilter();
+                            newFilter(filterText.getText());
                         }
                     });
         }
@@ -301,12 +300,16 @@ public class Main {
                 tickers.add(new MockTicker(Integer.toString(i)));
             }
 
-            TickerTablesPane tickerTablesPane = new TickerTablesPane(filterText, tickers);
-            //setBorder(pane);
-            dialog.setLayout(new BorderLayout());
-            dialog.add(tickerTablesPane.getPane(), BorderLayout.CENTER);
+            ButtonPane buttonPane = new ButtonPane();
 
-            dialog.add(new ButtonPane().getPane(),BorderLayout.PAGE_END);
+            TickerTablesPane tickerTablesPane = new TickerTablesPane(buttonPane.getSearchField(), tickers);
+            //setBorder(pane);
+
+            dialog.setLayout(new BorderLayout());
+
+            dialog.add(tickerTablesPane.getPane(), BorderLayout.CENTER);
+            dialog.add(buttonPane.getPane(),BorderLayout.PAGE_END);
+
             dialog.pack();
             SwingUtilities.invokeLater(() ->
                     dialog.setVisible(true));
@@ -318,11 +321,11 @@ public class Main {
         new TickerSelectorDialog();
     }
 
-    static private void newFilter() {
+    static private void newFilter(String text) {
         RowFilter<TickerTableModel, Object> rf = null;
         //If current expression doesn't parse, don't update.
         try {
-            rf = RowFilter.regexFilter(filterText.getText());
+            rf = RowFilter.regexFilter(text);
         } catch (java.util.regex.PatternSyntaxException e) {
             return;
         }
